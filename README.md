@@ -159,3 +159,45 @@ self.present(alert, animated: true, completion: nil)
 
 <https://developer.apple.com/documentation/uikit/uialertcontroller>
 
+#### info.plist에 URL types 추가하기
+- Document Role : Editor
+    - acc can do with the URL reading and writing
+- URL Schemes
+
+<https://stackoverflow.com/questions/16598352/in-xcode-under-info-tab-whats-role-for-in-url-types-section>
+
+
+#### Decodable struct에서 init 사용하기 
+
+```swift
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.title = try? values.decode(String?.self, forKey: .title)
+        self.name = try? values.decode(String?.self, forKey: .name)
+        self.thumbnail = try? values.decode(String?.self, forKey: .thumbnail)
+        self.datetime = Date.parse(values, key: .datetime)  
+    }
+
+```
+- String으로 받은 것을 => Date로 변환하기 위한 init이다.
+- self.datetime을 initialize 하면 다른 property도 exhaustive 하게 모두 init 해줘야 하기 때문에
+
+```swift
+func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> where Key : CodingKey
+```
+- returns the data stored in this decoder *as represented in a container* keyed by the given key type 
+- type: the key type to use for the container
+
+```swift
+func decode<T>(_ type: T.Type, forKey key: KeyedDecodingContainer<K>.Key) throws -> T where T : Decodable
+```
+- type: the type of value to decode
+- key : the key that the decoded value is associated with
+
+#### NSMutableURLRequest vs URLRequest
+
+- they are different classes but they are intended to provide the same functionality.
+- the NS version is more of a legacy APY that was a holdover from Objective-C 
+- NSMutableURLRequest is a subclass of NSURLRequest that allows you to change the request’s properties.
+<>
+<https://stackoverflow.com/questions/44770724/what-is-the-difference-between-nsurlrequest-and-urlrequest-in-swift>
