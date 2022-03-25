@@ -134,12 +134,173 @@ sortButtonTapped라는 PublishRelay와 연결되어 있다.
 - 또한 alert view가 어떻게 보여질 지 결정한다. (style 등)
 - signal을 반환한다.
 
+#### 🤩 Result
+```swift
+@frozen public enum Result<Success, Failure> where Failure : Error
+
+    /// A success, storing a `Success` value.
+    case success(Success)
+
+    /// A failure, storing a `Failure` value.
+    case failure(Failure)
+
+```
+
+#### 🥸 search event 구현
+> event의 흐름을 정리해본다.
+
+1. UISearchBar class 안에서 search button이 tapped 될 경우 
+```swift
+        var shouldLoadResult = Observable<String>.of("")
+
+        searchButtonTapped
+            .asSignal()
+            .emit(to: self.rx.endEditing) 
+            .disposed(by: disposeBag)
+            
+        self.shouldLoadResult = searchButtonTapped
+            .withLatestFrom(self.rx.text) { $1 ?? "" }
+            .filter { !$0.isEmpty }
+            .distinctUntilChanged()
+```
+
+- emit endEditing event (extension Reactive where Base: SearchBar)
+- withLatestFrom 
+    - Elements emitted by self before the second source has emitted any values will be omitted.
+    ```swift
+        public func withLatestFrom<Source: ObservableConvertibleType, ResultType>(_ second: Source, resultSelector: @escaping (Element, Source.Element) throws -> ResultType) -> Observable<ResultType> {
+        WithLatestFrom(first: self.asObservable(), second: second.asObservable(), resultSelector: resultSelector)
+    }
+    ```
+
+2. MainViewController 에서 SearchBar의 text를 query로 받아서 session.rx.data (Single)을 받아온다.
+
+```swift
+    func searchBlog(query: String) -> Single<Result<DKBlog, SearchNetworkError>> {
+            ...
+            return session.rx.data(request: request as URLRequest)
+            .map { data in
+                do {
+                    let blogData = try JSONDecoder().decode(DKBlog.self, from: data)
+                    return .success(blogData)
+                } catch {
+                    return .failure(.invalidJSON)
+                }
+            }
+            .catch { _ in
+                .just(.failure(.networkError))
+            }
+            .asSingle()
+    }
+
+```
+- SearchNetworkError는 사용자 정의한 Error
+
+```swift
+        let blogResult = searchBar.shouldLoadResult
+            .flatMapLatest { query in
+                SearchBlogNetwork().searchBlog(query: query)
+            }
+            .share()
+        
+        let blogValue = blogResult
+            .compactMap { data -> DKBlog? in
+                guard case .success(let value) = data else { return nil }
+                return value
+            }
+        
+        let blogError = blogResult
+            .compactMap { data -> String? in
+                guard case .failure(let error) = data else { return nil }
+                return error.localizedDescription
+            }
+
+```
+- share() 
+    - returns an observable sequence that shares a single subscription to the underlying sequence
+
+3. success 시 data 처리
+
+```swift
+        let cellData = blogValue
+            .map { blog -> [BlogListCellData] in
+                return blog.documents
+                    .map { doc in
+                        let thumbnailURL = URL(string: doc.thumbnail ?? "")
+                        return BlogListCellData(
+                            thumbnailURL: thumbnailURL,
+                            name: doc.name,
+                            title: doc.title,
+                            dateTime: doc.datetime)
+                    }
+            }
+            
+        let sortedType = alertActionTapped
+            .filter {
+                switch $0 {
+                case .title, .datetime:
+                    return true
+                default:
+                    return false
+                }
+            }
+            .startWith(.title)
+            
+        Observable
+            .combineLatest(sortedType, cellData) { type, data -> [BlogListCellData] in
+                switch type {
+                case .title:
+                    return data.sorted { $0.title ?? "" < $1.title ?? ""}
+                case .datetime:
+                    return data.sorted { $0.dateTime ?? Date() > $1.dateTime ?? Date() }
+                default:
+                    return data
+                }
+            }
+            .bind(to: listView.dataList)
+            .disposed(by: disposeBag)
+```
+- combineLatest
+    ```swift
+    
+    static func combineLatest<O1, O2>(_ source1: O1, _ source2: O2, resultSelector: @escaping (O1.Element, O2.Element) throws -> [BlogListCellData]) -> Observable<[BlogListCellData]> where O1 : ObservableType, O2 : ObservableType
+    
+    ```
+- listView.dataList 는 PublishSubject<[BlogListCellData]>()
+
+
+4. failure 시 data 처리
+
+```swift
+    let blogError = blogResult
+        .compactMap { data -> String? in
+            guard case .failure(let error) = data else { return nil }
+            return error.localizedDescription
+        }
+        
+    let alertForErrorMessage = blogError
+        .map { message -> Alert in
+            return (
+                title: "something gets wrong!",
+                message: message,
+                actions: [.confirm],
+                style: .alert)
+        }
+        
+    Observable
+    .merge(
+        alertForErrorMessage,
+        alertSheetForSorting
+    )
+    .asSignal(onErrorSignalWith: .empty())
+```
+- merge : merge 할 sequence는 type이 동일해야 한다.
 
 ### 🌟 새롭게 알게 된 것
 
-#### Alert vs ActionSheet
+#### ✨ Alert vs ActionSheet
 
-#### Action Sheets
+##### Action Sheets
 <img src="https://developer.apple.com/design/human-interface-guidelines/ios/images/action-sheets_2x.png">
 
 - An action sheet presents two or more choices related to an intentional user action
@@ -159,7 +320,7 @@ self.present(alert, animated: true, completion: nil)
 
 <https://developer.apple.com/documentation/uikit/uialertcontroller>
 
-#### info.plist에 URL types 추가하기
+#### ✨ info.plist에 URL types 추가하기
 - Document Role : Editor
     - acc can do with the URL reading and writing
 - URL Schemes
@@ -167,7 +328,7 @@ self.present(alert, animated: true, completion: nil)
 <https://stackoverflow.com/questions/16598352/in-xcode-under-info-tab-whats-role-for-in-url-types-section>
 
 
-#### Decodable struct에서 init 사용하기 
+#### ✨ Decodable struct에서 init 사용하기 
 
 ```swift
     init(from decoder: Decoder) throws {
@@ -194,7 +355,7 @@ func decode<T>(_ type: T.Type, forKey key: KeyedDecodingContainer<K>.Key) throws
 - type: the type of value to decode
 - key : the key that the decoded value is associated with
 
-#### NSMutableURLRequest vs URLRequest
+#### ✨ NSMutableURLRequest vs URLRequest
 
 - they are different classes but they are intended to provide the same functionality.
 - the NS version is more of a legacy APY that was a holdover from Objective-C 

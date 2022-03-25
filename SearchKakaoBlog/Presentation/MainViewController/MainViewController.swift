@@ -8,6 +8,8 @@
 import UIKit
 import RxCocoa
 import RxSwift
+import CoreMIDI
+import simd
 
 class MainViewController: UIViewController {
     let disposeBag = DisposeBag()
@@ -31,6 +33,75 @@ class MainViewController: UIViewController {
     private func bind() {
         //rx
         // component event binding
+        
+        let blogResult = searchBar.shouldLoadResult
+            .flatMapLatest { query in
+                SearchBlogNetwork().searchBlog(query: query)
+            }
+            .share()
+        
+        // share : returns an observable sequence that shares a single subscription to the underlying sequence,
+        // and immediately upon subscription replays elements in bugger
+        
+        let blogValue = blogResult
+            .compactMap { data -> DKBlog? in
+                guard case .success(let value) = data else { return nil }
+                return value
+            }
+        
+        let blogError = blogResult
+            .compactMap { data -> String? in
+                guard case .failure(let error) = data else { return nil }
+                return error.localizedDescription
+            }
+        
+        let cellData = blogValue
+            .map { blog -> [BlogListCellData] in
+                return blog.documents
+                    .map { doc in
+                        let thumbnailURL = URL(string: doc.thumbnail ?? "")
+                        return BlogListCellData(
+                            thumbnailURL: thumbnailURL,
+                            name: doc.name,
+                            title: doc.title,
+                            dateTime: doc.datetime)
+                    }
+            }
+        
+        let sortedType = alertActionTapped
+            .filter {
+                switch $0 {
+                case .title, .datetime:
+                    return true
+                default:
+                    return false
+                }
+            }
+            .startWith(.title)
+        
+        Observable
+            .combineLatest(sortedType, cellData) { type, data -> [BlogListCellData] in
+                switch type {
+                case .title:
+                    return data.sorted { $0.title ?? "" < $1.title ?? ""}
+                case .datetime:
+                    return data.sorted { $0.dateTime ?? Date() > $1.dateTime ?? Date() }
+                default:
+                    return data
+                }
+            }
+            .bind(to: listView.dataList)
+            .disposed(by: disposeBag)
+        
+        let alertForErrorMessage = blogError
+            .map { message -> Alert in
+                return (
+                    title: "something gets wrong!",
+                    message: message,
+                    actions: [.confirm],
+                    style: .alert)
+            }
+        
         let alertSheetForSorting = listView.headerView.sortButtonTapped  // button이 tapped 되었을 때,
             .map { _ -> Alert in
                 return (
@@ -41,7 +112,11 @@ class MainViewController: UIViewController {
                 )
             }
         
-        alertSheetForSorting
+        Observable
+            .merge(
+                alertForErrorMessage,
+                alertSheetForSorting
+            )
             .asSignal(onErrorSignalWith: .empty())
             .flatMapLatest { alert -> Signal<AlertAction> in
                 let alertController = UIAlertController(title: alert.title, message: alert.message, preferredStyle: alert.style)
@@ -49,6 +124,8 @@ class MainViewController: UIViewController {
              }
             .emit(to: alertActionTapped)
             .disposed(by: disposeBag)
+        
+       
     }
     
     private func attribute() {
