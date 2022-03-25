@@ -133,3 +133,29 @@ sortButtonTapped라는 PublishRelay와 연결되어 있다.
 - button이 tapped 될 때마다 UIAlertController를 통해 alert 를 present 해주기 위해 만들어진 함수
 - 또한 alert view가 어떻게 보여질 지 결정한다. (style 등)
 - signal을 반환한다.
+
+
+### 🌟 새롭게 알게 된 것
+
+#### Alert vs ActionSheet
+
+#### Action Sheets
+<img src="https://developer.apple.com/design/human-interface-guidelines/ios/images/action-sheets_2x.png">
+
+- An action sheet presents two or more choices related to an intentional user action
+- on smaller screens, an action sheet slides up from the bottom of the screen; on larger screens, an actio nsheet appears all at once as a popover.
+
+<https://developer.apple.com/design/human-interface-guidelines/ios/views/action-sheets/>
+
+- 적용 방법은 alert와 다르지 않다.
+
+```swift
+let alert = UIAlertController(title: "My Alert", message: "This is an alert.", preferredStyle: .alert) 
+alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: "Default action"), style: .default, handler: { _ in 
+NSLog("The \"OK\" alert occured.")
+}))
+self.present(alert, animated: true, completion: nil)
+```
+
+<https://developer.apple.com/documentation/uikit/uialertcontroller>
+
