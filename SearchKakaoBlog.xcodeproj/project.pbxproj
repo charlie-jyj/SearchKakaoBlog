@@ -161,6 +161,7 @@
 		6AD0EC1627E9C0C9000C5C23 = {
 			isa = PBXGroup;
 			children = (
+				6A51B8BF27ED42BB00FE1F58 /* README.md */,
 				6AD0EC2127E9C0C9000C5C23 /* SearchKakaoBlog */,
 				6AD0EC3827E9C0CA000C5C23 /* SearchKakaoBlogTests */,
 				6AD0EC4227E9C0CA000C5C23 /* SearchKakaoBlogUITests */,
@@ -188,7 +189,6 @@
 				6AD0EC3027E9C0CA000C5C23 /* Info.plist */,
 				6AA5EF4927EB03A0000A2536 /* Presentation */,
 				6AA5EF4A27EB03A7000A2536 /* Entity */,
-				6A51B8BF27ED42BB00FE1F58 /* README.md */,
 			);
 			path = SearchKakaoBlog;
 			sourceTree = "<group>";
