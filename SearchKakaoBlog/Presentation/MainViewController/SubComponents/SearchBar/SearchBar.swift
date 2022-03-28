@@ -16,14 +16,13 @@ class SearchBar: UISearchBar {
     let searchButton = UIButton()
     
     //searchbar button tap event
-    let searchButtonTapped = PublishRelay<Void>()  // error를 받지 않는 PublishSubject의 Wrapper 클래스
+    //let searchButtonTapped = PublishRelay<Void>()  // error를 받지 않는 PublishSubject의 Wrapper 클래스
     
     //searchbar 외부로 내보낼 event
-    var shouldLoadResult = Observable<String>.of("")
+    //var shouldLoadResult = Observable<String>.of("")
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        bind()
         attribute()
         layout()
     }
@@ -32,7 +31,7 @@ class SearchBar: UISearchBar {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func bind() {
+    func bind(_ viewModel: SearchBarViewModel) {
         // searchbar search button tapped (keyboard return)
         // button tapped
         // observable merge
@@ -43,22 +42,19 @@ class SearchBar: UISearchBar {
                 self.rx.searchButtonClicked.asObservable(),
                 searchButton.rx.tap.asObservable()
             )
-            .bind(to: searchButtonTapped)
+            .bind(to: viewModel.searchButtonTapped)
             .disposed(by: disposeBag)
         
         // searchButton이 tap 되면 endEditing event 방출
         // endEditing은 custom된 이벤트이다.
-        searchButtonTapped
+        viewModel.searchButtonTapped
             .asSignal()
             .emit(to: self.rx.endEditing)
             .disposed(by: disposeBag)
         
-        self.shouldLoadResult = searchButtonTapped
-            .withLatestFrom(self.rx.text) { $1 ?? "" }
-            .filter { !$0.isEmpty }
-            .distinctUntilChanged()
-            
-           
+        self.rx.text
+            .bind(to: viewModel.queryText)
+            .disposed(by: disposeBag)
     }
     
     // ui component 의 속성 결정

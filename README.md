@@ -362,3 +362,59 @@ func decode<T>(_ type: T.Type, forKey key: KeyedDecodingContainer<K>.Key) throws
 - NSMutableURLRequest is a subclass of NSURLRequest that allows you to change the request’s properties.
 <>
 <https://stackoverflow.com/questions/44770724/what-is-the-difference-between-nsurlrequest-and-urlrequest-in-swift>
+
+#### 👑 MVVM 
+
+- 현실 Cocoa MVC의 한계: View + Controller 의 불분명한 경계 
+- 비대한 ViewController => 순수한 MVC 패턴의 장점이 발휘되기 어려움
+    - notification 연산, delegate, 비지니스 로직 모두 가짐
+    - massive view controller
+- retired document 
+
+<img src="https://wojciechkulik.pl/wp-content/uploads/2019/07/mvvm.png">
+
+
+1. Model
+2. ViewModel
+    - 자신의 Model을 소유하고 업데이트 한다
+    - 데이터 사용자 액션 바인딩
+    ```swift
+    let tappedButton = PublishRelay<Void>()  // 이벤트 구독
+    let combo: Signal<String>  // 방출할 sequence
+    
+    //...
+    
+    combo = tappedButton
+    .map { _ in
+        "abcd"
+    }
+    .asSignal(onErrorJustReturn: "")
+    ```
+3. View
+    - 자신의 ViewModel을 소유한다 (따라서 ViewModel은 View를 알지 못해도 괜찮다.)
+    
+    ```swift
+    
+    // event trigger
+    button.rx.tap
+    .bind(to: viewModel.tappedButton)
+    .disposed(by: disposeBag)
+    
+    
+    // sequence를 어떻게 보여줄지만 결정
+    viewModel.combo
+    .emit(onNext: {
+        print($0)
+    })
+    .disposed(by: disposeBag)
+    ```
+
+- 단방향 개발이 용이해진다 + Rx 결합 시 시너지 증가
+    - view 사용자 입력 observable
+    - viewmodel이 observable을 subscribe(bind to) 하는 양상 (Observer)
+    - viewmodel의 stream을 rx의 operator로 대체하여 코드 수를 줄이고 가독성 증가
+    - rx는 view와 viewmodel 사이에서 접착제 역할
+- Cocoa Framework 의존도 낮아짐
+- 순수한 비즈니스 로직 보존, 로직 재사용 가능
+- ViewModel은 View를 몰라도 되는 장점
+

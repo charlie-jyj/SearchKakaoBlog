@@ -8,16 +8,16 @@
 import Foundation
 import RxSwift
 
+enum SearchNetworkError: Error {
+    case invalidURL
+    case invalidJSON
+    case networkError
+}
+
 class SearchBlogNetwork {
     private let session: URLSession
     let api = SearchBlogAPI()
-    
-    enum SearchNetworkError: Error {
-        case invalidURL
-        case invalidJSON
-        case networkError
-    }
-    
+
     init(session: URLSession = .shared) {
         self.session = session
     }

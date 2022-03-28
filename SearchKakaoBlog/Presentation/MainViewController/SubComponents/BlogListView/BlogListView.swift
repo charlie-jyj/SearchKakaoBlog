@@ -19,11 +19,10 @@ class BlogListView: UITableView {
             size: CGSize(width: UIScreen.main.bounds.width, height: 50)))
     
     // MainViewController => BlogListView
-    let dataList = PublishSubject<[BlogListCellData]>()
+    //let dataList = PublishSubject<[BlogListCellData]>()
     
     override init(frame: CGRect, style: UITableView.Style) {
         super.init(frame: frame, style: style)
-        bind()
         attribute()
     }
     
@@ -31,11 +30,10 @@ class BlogListView: UITableView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private func bind() {
-        
+   func bind(_ viewModel: BlogListViewModel) {
+       headerView.bind(viewModel.filterViewModel)
         // delegate rx 
-        dataList
-            .asDriver(onErrorJustReturn: [])
+        viewModel.dataList
             .drive(self.rx.items) { tableview, idx, celldata in
                 let indexpath = IndexPath(row: idx, section: 0)
                 let cell = tableview.dequeueReusableCell(withIdentifier: "BlogListCell", for: indexpath) as! BlogListCell
